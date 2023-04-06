@@ -32,6 +32,12 @@ func main {
 }
 ```
 
+Alternatively you can use the included command-line tool
+
+```sh
+tokenizer -encode supercalifragilistic
+```
+
 ## Caveats
 
 This library embeds OpenAI's vocabularies - which are not small (~4Mb) - as go
