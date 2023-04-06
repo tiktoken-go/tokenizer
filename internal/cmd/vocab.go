@@ -36,7 +36,7 @@ func main() {
 
 	file, err := os.Create(cfg.filename)
 	if err != nil {
-		log.Fatal("error creating file: %v", err)
+		log.Fatalf("error creating file: %v", err)
 	}
 	defer file.Close()
 
