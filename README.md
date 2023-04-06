@@ -1,3 +1,5 @@
+![Tests](https://github.com/tiktoken-go/tokenizer/actions/workflows/go.yml/badge.svg)
+
 # Tokenizer
 
 This is a pure go port of OpenAI's tokenizer.
