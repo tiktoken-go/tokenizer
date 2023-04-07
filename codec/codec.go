@@ -57,25 +57,6 @@ func (c *Codec) Decode(tokens []uint) (string, error) {
 	return out, nil
 }
 
-// Greedy algo
-// func (c *Codec) bpe(piece []byte) ([]uint, []string) {
-// 	var ids []uint
-// 	var tokens []string
-// 	i := 0
-// 	for i < len(piece) {
-// 		for j := len(piece); j > i; j-- {
-// 			token := string(piece[i:j])
-// 			if id, ok := c.vocabulary[token]; ok {
-// 				tokens = append(tokens, token)
-// 				ids = append(ids, id)
-// 				i = j
-// 				break
-// 			}
-// 		}
-// 	}
-// 	return ids, tokens
-// }
-
 func (c *Codec) bpe(piece []byte) ([]uint, []string) {
 	type byteRange struct {
 		start int

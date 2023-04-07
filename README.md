@@ -35,12 +35,33 @@ func main {
 Alternatively you can use the included command-line tool
 
 ```sh
-tokenizer -encode supercalifragilistic
+> tokenizer -h
+
+Usage of tokenizer:
+  -decode string
+        tokens to decode
+  -encode string
+        text to encode
+  -token string
+        text to calculate token
+
+> tokenizer -encode supercalifragilistic
 ```
+
+## Todo
+
+- ✅ port code
+- ✅ cl100k_base encoding
+- ✅ r50k_base encoding
+- ✅ p50k_base encoding
+- ✅ p50k_edit encoding
+- ✅ tests
+- ❌ handle special tokens
+- ❌ gpt-2 model
 
 ## Caveats
 
-This library embeds OpenAI's vocabularies - which are not small (~4Mb) - as go
+This library embeds OpenAI's vocabularies—which are not small (~4Mb)— as go
 maps. This is different than what the way python version of tiktoken works, 
 which downloads the dictionaries and puts them in a cache folder.
 

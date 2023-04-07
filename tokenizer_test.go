@@ -13,106 +13,32 @@ func TestCl100kEncoding(t *testing.T) {
 	}
 
 	tests := []struct {
-		input string
-		want  []uint
+		text string
+		ids  []uint
 	}{
-		{input: "hello world", want: []uint{15339, 1917}},
-		{input: "supercalifragilistic", want: []uint{9712, 5531, 97816, 37135, 1638, 292}},
+		{text: "hello world", ids: []uint{15339, 1917}},
+		{text: "supercalifragilistic", ids: []uint{13066, 3035, 278, 333, 4193, 321, 4633}},
+		{text: "We know what we are, but know not what we may be.", ids: []uint{1687, 1440, 1148, 584, 527, 11, 719, 1440, 539, 1148, 584, 1253, 387, 13}},
 	}
 
 	for _, test := range tests {
-		t.Run(test.input, func(t *testing.T) {
-			tokens, _, err := tokenizer.Encode(test.input)
+		t.Run(test.text, func(t *testing.T) {
+			ids, _, err := tokenizer.Encode(test.text)
 			if err != nil {
 				t.Fatalf("error encoding: %v", err)
 			}
 
-			if !sliceEqual(tokens, test.want) {
-				t.Skipf("input: %s want: %v got: %v", test.input, test.want, tokens)
+			if !sliceEqual(ids, test.ids) {
+				t.Fatalf("input: %s want: %v got: %v", test.text, test.ids, ids)
 			}
-		})
-	}
-}
 
-func TestCl100kDecoding(t *testing.T) {
-	tokenizer, err := tokenizer.Get(tokenizer.Cl100kBase)
-	if err != nil {
-		t.Fatalf("can't create tokenizer")
-	}
-
-	tests := []struct {
-		input []uint
-		want  string
-	}{
-		{want: "hello world", input: []uint{15339, 1917}},
-		{want: "supercalifragilistic", input: []uint{9712, 5531, 97816, 37135, 1638, 292}},
-	}
-
-	for _, test := range tests {
-		t.Run(test.want, func(t *testing.T) {
-			text, err := tokenizer.Decode(test.input)
+			text, err := tokenizer.Decode(ids)
 			if err != nil {
-				t.Fatalf("error encoding: %v", err)
+				t.Fatalf("error decoding: %v", err)
 			}
 
-			if text != test.want {
-				t.Fatalf("input: %v want: %v got: %v", test.input, test.want, text)
-			}
-		})
-	}
-}
-
-func TestP50kBaseEncoding(t *testing.T) {
-	tokenizer, err := tokenizer.Get(tokenizer.P50kBase)
-	if err != nil {
-		t.Fatalf("can't create tokenizer")
-	}
-
-	tests := []struct {
-		input string
-		want  []uint
-	}{
-		{input: "hello world", want: []uint{31373, 995}},
-		{input: "supercalifragilistic", want: []uint{16668, 9948, 361, 22562, 2403, 11268}},
-	}
-
-	for _, test := range tests {
-		t.Run(test.input, func(t *testing.T) {
-			tokens, _, err := tokenizer.Encode(test.input)
-			if err != nil {
-				t.Fatalf("error encoding: %v", err)
-			}
-
-			if !sliceEqual(tokens, test.want) {
-				t.Skipf("input: %s want: %v got: %v", test.input, test.want, tokens)
-			}
-		})
-	}
-}
-
-func TestP50kDecoding(t *testing.T) {
-	tokenizer, err := tokenizer.Get(tokenizer.P50kBase)
-	if err != nil {
-		t.Fatalf("can't create tokenizer")
-	}
-
-	tests := []struct {
-		input []uint
-		want  string
-	}{
-		{want: "hello world", input: []uint{31373, 995}},
-		{want: "supercalifragilistic", input: []uint{16668, 9948, 361, 22562, 2403, 11268}},
-	}
-
-	for _, test := range tests {
-		t.Run(test.want, func(t *testing.T) {
-			text, err := tokenizer.Decode(test.input)
-			if err != nil {
-				t.Fatalf("error encoding: %v", err)
-			}
-
-			if text != test.want {
-				t.Fatalf("input: %v want: %v got: %v", test.input, test.want, text)
+			if text != test.text {
+				t.Fatalf("input: %v want: %s got: %s", test.ids, test.text, text)
 			}
 		})
 	}
@@ -125,50 +51,108 @@ func TestR50kBaseEncoding(t *testing.T) {
 	}
 
 	tests := []struct {
-		input string
-		want  []uint
+		text string
+		ids  []uint
 	}{
-		{input: "hello world", want: []uint{31373, 995}},
-		{input: "supercalifragilistic", want: []uint{16668, 9948, 361, 22562, 2403, 11268}},
+		{text: "hello world", ids: []uint{31373, 995}},
+		{text: "supercalifragilistic", ids: []uint{16668, 9948, 361, 22562, 346, 2569}},
+		{text: "We know what we are, but know not what we may be.", ids: []uint{1135, 760, 644, 356, 389, 11, 475, 760, 407, 644, 356, 743, 307, 13}},
 	}
 
 	for _, test := range tests {
-		t.Run(test.input, func(t *testing.T) {
-			tokens, _, err := tokenizer.Encode(test.input)
+		t.Run(test.text, func(t *testing.T) {
+			ids, _, err := tokenizer.Encode(test.text)
 			if err != nil {
 				t.Fatalf("error encoding: %v", err)
 			}
 
-			if !sliceEqual(tokens, test.want) {
-				t.Skipf("input: %s want: %v got: %v", test.input, test.want, tokens)
+			if !sliceEqual(ids, test.ids) {
+				t.Fatalf("input: %s want: %v got: %v", test.text, test.ids, ids)
+			}
+
+			text, err := tokenizer.Decode(ids)
+			if err != nil {
+				t.Fatalf("error decoding: %v", err)
+			}
+
+			if text != test.text {
+				t.Fatalf("input: %v want: %s got: %s", test.ids, test.text, text)
 			}
 		})
 	}
 }
 
-func TestR50kDecoding(t *testing.T) {
-	tokenizer, err := tokenizer.Get(tokenizer.R50kBase)
+func TestP50kBaseEncoding(t *testing.T) {
+	tokenizer, err := tokenizer.Get(tokenizer.P50kBase)
 	if err != nil {
 		t.Fatalf("can't create tokenizer")
 	}
 
 	tests := []struct {
-		input []uint
-		want  string
+		text string
+		ids  []uint
 	}{
-		{want: "hello world", input: []uint{31373, 995}},
-		{want: "supercalifragilistic", input: []uint{16668, 9948, 361, 22562, 2403, 11268}},
+		{text: "hello world", ids: []uint{31373, 995}},
+		{text: "supercalifragilistic", ids: []uint{16668, 9948, 361, 22562, 346, 2569}},
+		{text: "We know what we are, but know not what we may be.", ids: []uint{1135, 760, 644, 356, 389, 11, 475, 760, 407, 644, 356, 743, 307, 13}},
 	}
 
 	for _, test := range tests {
-		t.Run(test.want, func(t *testing.T) {
-			text, err := tokenizer.Decode(test.input)
+		t.Run(test.text, func(t *testing.T) {
+			ids, _, err := tokenizer.Encode(test.text)
 			if err != nil {
 				t.Fatalf("error encoding: %v", err)
 			}
 
-			if text != test.want {
-				t.Fatalf("input: %v want: %v got: %v", test.input, test.want, text)
+			if !sliceEqual(ids, test.ids) {
+				t.Fatalf("input: %s want: %v got: %v", test.text, test.ids, ids)
+			}
+
+			text, err := tokenizer.Decode(ids)
+			if err != nil {
+				t.Fatalf("error decoding: %v", err)
+			}
+
+			if text != test.text {
+				t.Fatalf("input: %v want: %s got: %s", test.ids, test.text, text)
+			}
+		})
+	}
+}
+
+func TestP50kEditEncoding(t *testing.T) {
+	tokenizer, err := tokenizer.Get(tokenizer.P50kEdit)
+	if err != nil {
+		t.Fatalf("can't create tokenizer")
+	}
+
+	tests := []struct {
+		text string
+		ids  []uint
+	}{
+		{text: "hello world", ids: []uint{31373, 995}},
+		{text: "supercalifragilistic", ids: []uint{16668, 9948, 361, 22562, 346, 2569}},
+		{text: "We know what we are, but know not what we may be.", ids: []uint{1135, 760, 644, 356, 389, 11, 475, 760, 407, 644, 356, 743, 307, 13}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.text, func(t *testing.T) {
+			ids, _, err := tokenizer.Encode(test.text)
+			if err != nil {
+				t.Fatalf("error encoding: %v", err)
+			}
+
+			if !sliceEqual(ids, test.ids) {
+				t.Fatalf("input: %s want: %v got: %v", test.text, test.ids, ids)
+			}
+
+			text, err := tokenizer.Decode(ids)
+			if err != nil {
+				t.Fatalf("error decoding: %v", err)
+			}
+
+			if text != test.text {
+				t.Fatalf("input: %v want: %s got: %s", test.ids, test.text, text)
 			}
 		})
 	}
