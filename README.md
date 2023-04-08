@@ -13,17 +13,17 @@ package main
 
 import (
     "fmt"
-	"github.com/tiktoken-go/tokenizer"
+    "github.com/tiktoken-go/tokenizer"
 )
 
-func main {
+func main() {
     enc, err := tokenizer.Get(tokenizer.Cl100kBase)
     if err != nil {
         panic("oh oh")
     }
 
     // this should print a list of token ids
-    ids, token, _ := enc.Encode("supercalifragilistic")
+    ids, _, _ := enc.Encode("supercalifragilistic")
     fmt.Println(ids)
 
     // this should print the original string back
