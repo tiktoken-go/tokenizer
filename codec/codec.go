@@ -1,7 +1,6 @@
 package codec
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"regexp"
@@ -58,30 +57,29 @@ func (c *Codec) Decode(tokens []uint) (string, error) {
 }
 
 func (c *Codec) bpe(piece []byte) ([]uint, []string) {
-	type byteRange struct {
-		start int
-		end   int
+	type part struct {
+		offset int
+		rank   uint
 	}
 
-	parts := make([]byteRange, len(piece)+1)
+	parts := make([]part, len(piece)+1)
 	for i := 0; i < len(parts); i++ {
-		parts[i] = byteRange{i, math.MaxInt64}
+		parts[i] = part{i, math.MaxUint}
 	}
 
-	getRank := func(parts []byteRange, startIdx, skip int) (uint, error) {
-		if startIdx+skip+2 < len(parts) {
-			chunk := string(piece[parts[startIdx].start:parts[startIdx+skip+2].start])
-			if rank, ok := c.vocabulary[chunk]; ok {
-				return rank, nil
+	getRank := func(index, skip int) uint {
+		if index+skip+2 < len(parts) {
+			start := parts[index].offset
+			end := parts[index+skip+2].offset
+			if rank, ok := c.vocabulary[string(piece[start:end])]; ok {
+				return rank
 			}
 		}
-		return math.MaxInt64, errors.New("not found")
+		return math.MaxUint
 	}
 
 	for i := 0; i < len(parts)-2; i++ {
-		if r, err := getRank(parts, i, 0); err == nil {
-			parts[i].end = int(r)
-		}
+		parts[i].rank = getRank(i, 0)
 	}
 
 	for {
@@ -89,37 +87,32 @@ func (c *Codec) bpe(piece []byte) ([]uint, []string) {
 			break
 		}
 
-		minRank := byteRange{math.MaxInt64, 0}
+		minRank := uint(math.MaxUint)
+		minIndex := 0
 		for i, p := range parts[:len(parts)-1] {
-			if p.end < minRank.start {
-				minRank = byteRange{p.end, i}
+			if p.rank < minRank {
+				minRank = p.rank
+				minIndex = i
 			}
 		}
 
-		if minRank.start != math.MaxInt64 {
-			i := minRank.end
-
-			parts[i].end = math.MaxInt64
-			if r, err := getRank(parts, i, 1); err == nil {
-				parts[i].end = int(r)
-			}
-			if i > 0 {
-				parts[i-1].end = math.MaxInt64
-				if r, err := getRank(parts, i-1, 1); err == nil {
-					parts[i-1].end = int(r)
-				}
-			}
-
-			parts = append(parts[:i+1], parts[i+2:]...)
-		} else {
+		if minRank == math.MaxUint {
 			break
 		}
+
+		parts[minIndex].rank = getRank(minIndex, 1)
+
+		if minIndex > 0 {
+			parts[minIndex-1].rank = getRank(minIndex-1, 1)
+		}
+
+		parts = append(parts[:minIndex+1], parts[minIndex+2:]...)
 	}
 
 	ids := make([]uint, len(parts)-1)
 	tokens := make([]string, len(parts)-1)
 	for i := 0; i < len(ids); i++ {
-		token := string(piece[parts[i].start:parts[i+1].start])
+		token := string(piece[parts[i].offset:parts[i+1].offset])
 		tokens[i] = token
 		ids[i] = c.vocabulary[token]
 	}
