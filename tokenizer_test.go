@@ -17,6 +17,8 @@ func TestCl100kEncoding(t *testing.T) {
 		ids  []uint
 	}{
 		{text: "hello world", ids: []uint{15339, 1917}},
+		{text: "hello  world", ids: []uint{15339, 220, 1917}},
+		{text: "hello   world", ids: []uint{15339, 256, 1917}},
 		{text: "supercalifragilistic", ids: []uint{13066, 3035, 278, 333, 4193, 321, 4633}},
 		{text: "We know what we are, but know not what we may be.", ids: []uint{1687, 1440, 1148, 584, 527, 11, 719, 1440, 539, 1148, 584, 1253, 387, 13}},
 	}
@@ -55,6 +57,8 @@ func TestR50kBaseEncoding(t *testing.T) {
 		ids  []uint
 	}{
 		{text: "hello world", ids: []uint{31373, 995}},
+		{text: "hello  world", ids: []uint{31373, 220, 995}},
+		{text: "hello   world", ids: []uint{31373, 220, 220, 995}},
 		{text: "supercalifragilistic", ids: []uint{16668, 9948, 361, 22562, 346, 2569}},
 		{text: "We know what we are, but know not what we may be.", ids: []uint{1135, 760, 644, 356, 389, 11, 475, 760, 407, 644, 356, 743, 307, 13}},
 	}
@@ -93,6 +97,8 @@ func TestP50kBaseEncoding(t *testing.T) {
 		ids  []uint
 	}{
 		{text: "hello world", ids: []uint{31373, 995}},
+		{text: "hello  world", ids: []uint{31373, 220, 995}},
+		{text: "hello   world", ids: []uint{31373, 50257, 995}},
 		{text: "supercalifragilistic", ids: []uint{16668, 9948, 361, 22562, 346, 2569}},
 		{text: "We know what we are, but know not what we may be.", ids: []uint{1135, 760, 644, 356, 389, 11, 475, 760, 407, 644, 356, 743, 307, 13}},
 	}
@@ -131,6 +137,8 @@ func TestP50kEditEncoding(t *testing.T) {
 		ids  []uint
 	}{
 		{text: "hello world", ids: []uint{31373, 995}},
+		{text: "hello  world", ids: []uint{31373, 220, 995}},
+		{text: "hello   world", ids: []uint{31373, 50257, 995}},
 		{text: "supercalifragilistic", ids: []uint{16668, 9948, 361, 22562, 346, 2569}},
 		{text: "We know what we are, but know not what we may be.", ids: []uint{1135, 760, 644, 356, 389, 11, 475, 760, 407, 644, 356, 743, 307, 13}},
 	}

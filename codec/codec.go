@@ -3,14 +3,15 @@ package codec
 import (
 	"fmt"
 	"math"
-	"regexp"
+
+	"github.com/dlclark/regexp2"
 )
 
 type Codec struct {
 	vocabulary        vocab
 	reverseVocabulary reverse
 	specialTokens     map[string]uint
-	splitRegexp       *regexp.Regexp
+	splitRegexp       *regexp2.Regexp
 	name              string
 }
 
@@ -23,16 +24,26 @@ func (c *Codec) Encode(input string) ([]uint, []string, error) {
 		ids    []uint
 		tokens []string
 	)
+	match, err := c.splitRegexp.FindStringMatch(input)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error matching: %v", err)
+	}
 
-	for _, piece := range c.splitRegexp.FindAll([]byte(input), -1) {
-		if id, ok := c.vocabulary[string(piece)]; ok {
+	for match != nil {
+		piece := match.String()
+		if id, ok := c.vocabulary[piece]; ok {
 			ids = append(ids, id)
-			tokens = append(tokens, string(piece))
-			continue
+			tokens = append(tokens, piece)
+		} else {
+			newIds, newTokens := c.bpe([]byte(piece))
+			ids = append(ids, newIds...)
+			tokens = append(tokens, newTokens...)
 		}
-		newIds, newTokens := c.bpe(piece)
-		ids = append(ids, newIds...)
-		tokens = append(tokens, newTokens...)
+		m, err := c.splitRegexp.FindNextMatch(match)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error matching: %v", err)
+		}
+		match = m
 	}
 	return ids, tokens, nil
 }
