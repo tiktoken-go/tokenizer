@@ -73,7 +73,8 @@ them at runtime.
 
 Here is a list of other libraries that do something similar.
 
-- [https://github.com/sugarme/tokenizer](https://github.com/sugarme/tokenizer)
-- [https://github.com/pandodao/tokenizer-go](https://github.com/pandodao/tokenizer-go)
+- [https://github.com/sugarme/tokenizer](https://github.com/sugarme/tokenizer) (A different tokenizer algorithm than OpenAI's)
+- [https://github.com/pandodao/tokenizer-go](https://github.com/pandodao/tokenizer-go) (deprecated, calls into JavaScript)
+- [https://github.com/pkoukk/tiktoken-go](https://github.com/pkoukk/tiktoken-go)
 
 
