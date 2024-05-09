@@ -3,6 +3,7 @@ package codec
 import "github.com/dlclark/regexp2"
 
 func NewP50kEdit() *Codec {
+	p50kBaseVocabOnce.Do(p50kBaseVocabInit)
 	return &Codec{
 		name:        "p50k_edit",
 		vocabulary:  p50kBaseVocab,
