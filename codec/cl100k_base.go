@@ -3,6 +3,7 @@ package codec
 import "github.com/dlclark/regexp2"
 
 func NewCl100kBase() *Codec {
+	cl100kBaseVocabOnce.Do(cl100kBaseVocabInit)
 	return &Codec{
 		name:        "cl100k_base",
 		vocabulary:  cl100kBaseVocab,
