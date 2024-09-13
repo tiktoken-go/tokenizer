@@ -91,8 +91,10 @@ type Codec interface {
 type Model string
 
 const (
+	GPT4o                    Model = "gpt-4o"
 	GPT4                     Model = "gpt-4"
 	GPT35Turbo               Model = "gpt-3.5-turbo"
+	GPT35                    Model = "gpt-3.5"
 	TextEmbeddingAda002      Model = "text-embedding-ada-002"
 	TextDavinci003           Model = "text-davinci-003"
 	TextDavinci002           Model = "text-davinci-002"
@@ -133,7 +135,19 @@ const (
 	P50kBase   Encoding = "p50k_base"
 	P50kEdit   Encoding = "p50k_edit"
 	Cl100kBase Encoding = "cl100k_base"
+	O200kBase  Encoding = "o200k_base"
 )
+
+var modelPrefixToEncoding map[Model]Encoding = map[Model]Encoding{
+	"gpt-4o-":          O200kBase,
+	"gpt-4-":           Cl100kBase,
+	"gpt-3.5-turbo-":   Cl100kBase,
+	"gpt-35-turbo-":    Cl100kBase,
+	"ft:gpt-4":         Cl100kBase,
+	"ft:gpt-3.5-turbo": Cl100kBase,
+	"ft:davinci-002":   Cl100kBase,
+	"ft:babbage-002":   Cl100kBase,
+}
 
 // Get returns a new instance of a Codec implementation based on the specified
 // encoding format. The returned Codec instance can be used to encode (tokenize)
@@ -141,6 +155,8 @@ const (
 // an error is returned.
 func Get(encoding Encoding) (Codec, error) {
 	switch encoding {
+	case O200kBase:
+		return codec.NewO200kBase(), nil
 	case Cl100kBase:
 		return codec.NewCl100kBase(), nil
 	case R50kBase:
@@ -159,7 +175,10 @@ func Get(encoding Encoding) (Codec, error) {
 // is returned.
 func ForModel(model Model) (Codec, error) {
 	switch model {
-	case GPT4, GPT35Turbo, TextEmbeddingAda002:
+	case GPT4o:
+		return Get(O200kBase)
+
+	case GPT4, GPT35, GPT35Turbo, TextEmbeddingAda002:
 		return Get(Cl100kBase)
 
 	case TextDavinci003, TextDavinci002, CodeDavinci001,
@@ -180,6 +199,11 @@ func ForModel(model Model) (Codec, error) {
 	case GPT2:
 		return Get(GPT2Enc)
 	default:
+		for prefix, enc := range modelPrefixToEncoding {
+			if string(model)[:len(prefix)] == string(prefix) {
+				return Get(enc)
+			}
+		}
 		return nil, ErrModelNotSupported
 	}
 }

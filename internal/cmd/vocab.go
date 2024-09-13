@@ -98,6 +98,12 @@ func generateVocabulary(w io.Writer, mapName string, uri string) {
 
 func getConfig(encoding string) config {
 	switch encoding {
+	case "o200k_base":
+		return config{
+			mapName:  "o200kBaseVocab",
+			url:      "https://openaipublic.blob.core.windows.net/encodings/o200k_base.tiktoken",
+			filename: "o200k_base_vocab.go",
+		}
 	case "cl100k_base":
 		return config{
 			mapName:  "cl100kBaseVocab",

@@ -51,6 +51,7 @@ Usage of tokenizer:
 ## Todo
 
 - ✅ port code
+- ✅ o200k_base encoding
 - ✅ cl100k_base encoding
 - ✅ r50k_base encoding
 - ✅ p50k_base encoding
