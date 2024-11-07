@@ -72,6 +72,7 @@ package tokenizer
 //}
 
 import (
+	"strings"
 	"errors"
 
 	"github.com/tiktoken-go/tokenizer/codec"
@@ -200,7 +201,7 @@ func ForModel(model Model) (Codec, error) {
 		return Get(GPT2Enc)
 	default:
 		for prefix, enc := range modelPrefixToEncoding {
-			if string(model)[:len(prefix)] == string(prefix) {
+			if strings.HasPrefix(string(model), string(prefix)) {
 				return Get(enc)
 			}
 		}
