@@ -1,7 +1,5 @@
 package tokenizer
 
-import "strings"
-
 // Package tokenizer provides functions for encoding and decoding text using
 // different tokenization schemes.
 //
@@ -74,6 +72,7 @@ import "strings"
 //}
 
 import (
+	"strings"
 	"errors"
 
 	"github.com/tiktoken-go/tokenizer/codec"
