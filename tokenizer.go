@@ -1,5 +1,7 @@
 package tokenizer
 
+import "strings"
+
 // Package tokenizer provides functions for encoding and decoding text using
 // different tokenization schemes.
 //
@@ -200,7 +202,7 @@ func ForModel(model Model) (Codec, error) {
 		return Get(GPT2Enc)
 	default:
 		for prefix, enc := range modelPrefixToEncoding {
-			if string(model)[:len(prefix)] == string(prefix) {
+			if strings.HasPrefix(string(model), string(prefix)) {
 				return Get(enc)
 			}
 		}
