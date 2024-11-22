@@ -144,8 +144,7 @@ const (
 )
 
 var modelPrefixToEncoding map[Model]Encoding = map[Model]Encoding{
-	"o1-preview-":      O200kBase,
-	"o1-mini-":         O200kBase,
+	"o1-":              O200kBase,
 	"gpt-4o-":          O200kBase,
 	"gpt-4-":           Cl100kBase,
 	"gpt-3.5-turbo-":   Cl100kBase,
