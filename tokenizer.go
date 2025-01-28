@@ -74,8 +74,8 @@ package tokenizer
 //}
 
 import (
-	"strings"
 	"errors"
+	"strings"
 
 	"github.com/tiktoken-go/tokenizer/codec"
 )
@@ -144,11 +144,14 @@ const (
 )
 
 var modelPrefixToEncoding map[Model]Encoding = map[Model]Encoding{
-	"o1-":              O200kBase,
-	"gpt-4o-":          O200kBase,
-	"gpt-4-":           Cl100kBase,
-	"gpt-3.5-turbo-":   Cl100kBase,
-	"gpt-35-turbo-":    Cl100kBase,
+	"o1-": O200kBase,
+	// chat
+	"chatgpt-4o-":    O200kBase,
+	"gpt-4o-":        O200kBase,
+	"gpt-4-":         Cl100kBase,
+	"gpt-3.5-turbo-": Cl100kBase,
+	"gpt-35-turbo-":  Cl100kBase,
+	// fine-tuned
 	"ft:gpt-4":         Cl100kBase,
 	"ft:gpt-3.5-turbo": Cl100kBase,
 	"ft:davinci-002":   Cl100kBase,
