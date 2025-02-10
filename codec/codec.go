@@ -19,6 +19,30 @@ func (c *Codec) GetName() string {
 	return c.name
 }
 
+// Count returns the number of tokens in the input string.
+func (c *Codec) Count(input string) (int, error) {
+	count := 0
+	match, err := c.splitRegexp.FindStringMatch(input)
+	if err != nil {
+		return 0, fmt.Errorf("error matching: %v", err)
+	}
+
+	for match != nil {
+		piece := match.String()
+		if _, ok := c.vocabulary[piece]; ok {
+			count++
+		} else {
+			count += c.bpeCount([]byte(piece))
+		}
+		m, err := c.splitRegexp.FindNextMatch(match)
+		if err != nil {
+			return 0, fmt.Errorf("error matching: %v", err)
+		}
+		match = m
+	}
+	return count, nil
+}
+
 func (c *Codec) Encode(input string) ([]uint, []string, error) {
 	var (
 		ids    []uint
@@ -67,12 +91,12 @@ func (c *Codec) Decode(tokens []uint) (string, error) {
 	return out, nil
 }
 
-func (c *Codec) bpe(piece []byte) ([]uint, []string) {
-	type part struct {
-		offset int
-		rank   uint
-	}
+type part struct {
+	offset int
+	rank   uint
+}
 
+func (c *Codec) mergePairs(piece []byte) []part {
 	parts := make([]part, len(piece)+1)
 	for i := 0; i < len(parts); i++ {
 		parts[i] = part{i, math.MaxUint}
@@ -120,6 +144,12 @@ func (c *Codec) bpe(piece []byte) ([]uint, []string) {
 		parts = append(parts[:minIndex+1], parts[minIndex+2:]...)
 	}
 
+	return parts
+}
+
+func (c *Codec) bpe(piece []byte) ([]uint, []string) {
+	parts := c.mergePairs(piece)
+
 	ids := make([]uint, len(parts)-1)
 	tokens := make([]string, len(parts)-1)
 	for i := 0; i < len(ids); i++ {
@@ -128,4 +158,9 @@ func (c *Codec) bpe(piece []byte) ([]uint, []string) {
 		ids[i] = c.vocabulary[token]
 	}
 	return ids, tokens
+}
+
+func (c *Codec) bpeCount(piece []byte) int {
+	parts := c.mergePairs(piece)
+	return len(parts) - 1
 }

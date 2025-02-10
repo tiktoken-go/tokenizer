@@ -87,6 +87,7 @@ var (
 
 type Codec interface {
 	GetName() string
+	Count(string) (int, error)
 	Encode(string) ([]uint, []string, error)
 	Decode([]uint) (string, error)
 }

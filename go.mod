@@ -1,6 +1,6 @@
 module github.com/tiktoken-go/tokenizer
 
-go 1.21.4
+go 1.23
 
 toolchain go1.22.0
 
