@@ -2,6 +2,7 @@ package codec
 
 import (
 	"fmt"
+	"iter"
 	"math"
 
 	"github.com/dlclark/regexp2"
@@ -20,56 +21,66 @@ func (c *Codec) GetName() string {
 }
 
 // Count returns the number of tokens in the input string.
-func (c *Codec) Count(input string) (int, error) {
-	count := 0
-	match, err := c.splitRegexp.FindStringMatch(input)
-	if err != nil {
-		return 0, fmt.Errorf("error matching: %v", err)
+func (c *Codec) Count(input string) (count int, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("error encoding: %v", r)
+		}
+	}()
+
+	for _, _ = range c.tokenize(input) {
+		count++
 	}
 
-	for match != nil {
-		piece := match.String()
-		if _, ok := c.vocabulary[piece]; ok {
-			count++
-		} else {
-			count += c.bpeCount([]byte(piece))
-		}
-		m, err := c.splitRegexp.FindNextMatch(match)
-		if err != nil {
-			return 0, fmt.Errorf("error matching: %v", err)
-		}
-		match = m
-	}
-	return count, nil
+	return count, err
 }
 
-func (c *Codec) Encode(input string) ([]uint, []string, error) {
-	var (
-		ids    []uint
-		tokens []string
-	)
-	match, err := c.splitRegexp.FindStringMatch(input)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error matching: %v", err)
+// Encode returns the token IDs and tokens for the input string.
+func (c *Codec) Encode(input string) (ids []uint, tokens []string, err error) {
+
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("error encoding: %v", r)
+		}
+	}()
+
+	for id, token := range c.tokenize(input) {
+		ids = append(ids, id)
+		tokens = append(tokens, token)
 	}
 
-	for match != nil {
-		piece := match.String()
-		if id, ok := c.vocabulary[piece]; ok {
-			ids = append(ids, id)
-			tokens = append(tokens, piece)
-		} else {
-			newIds, newTokens := c.bpe([]byte(piece))
-			ids = append(ids, newIds...)
-			tokens = append(tokens, newTokens...)
-		}
-		m, err := c.splitRegexp.FindNextMatch(match)
+	return ids, tokens, err
+}
+
+func (c *Codec) tokenize(input string) iter.Seq2[uint, string] {
+	return func(yield func(uint, string) bool) {
+		match, err := c.splitRegexp.FindStringMatch(input)
 		if err != nil {
-			return nil, nil, fmt.Errorf("error matching: %v", err)
+			panic(fmt.Errorf("error matching: %v", err))
 		}
-		match = m
+		for match != nil {
+			piece := match.String()
+			if id, ok := c.vocabulary[piece]; ok {
+				if !yield(id, piece) {
+					break
+				}
+			} else {
+				parts := c.mergePairs([]byte(piece))
+
+				for i := 0; i < len(parts)-1; i++ {
+					token := string(piece[parts[i].offset:parts[i+1].offset])
+					if !yield(c.vocabulary[token], token) {
+						break
+					}
+				}
+			}
+			m, err := c.splitRegexp.FindNextMatch(match)
+			if err != nil {
+				break
+			}
+			match = m
+		}
 	}
-	return ids, tokens, nil
 }
 
 func (c *Codec) Decode(tokens []uint) (string, error) {
@@ -145,22 +156,4 @@ func (c *Codec) mergePairs(piece []byte) []part {
 	}
 
 	return parts
-}
-
-func (c *Codec) bpe(piece []byte) ([]uint, []string) {
-	parts := c.mergePairs(piece)
-
-	ids := make([]uint, len(parts)-1)
-	tokens := make([]string, len(parts)-1)
-	for i := 0; i < len(ids); i++ {
-		token := string(piece[parts[i].offset:parts[i+1].offset])
-		tokens[i] = token
-		ids[i] = c.vocabulary[token]
-	}
-	return ids, tokens
-}
-
-func (c *Codec) bpeCount(piece []byte) int {
-	parts := c.mergePairs(piece)
-	return len(parts) - 1
 }
