@@ -2,6 +2,7 @@ package codec
 
 import (
 	"fmt"
+	"iter"
 	"math"
 
 	"github.com/dlclark/regexp2"
@@ -19,33 +20,67 @@ func (c *Codec) GetName() string {
 	return c.name
 }
 
-func (c *Codec) Encode(input string) ([]uint, []string, error) {
-	var (
-		ids    []uint
-		tokens []string
-	)
-	match, err := c.splitRegexp.FindStringMatch(input)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error matching: %v", err)
+// Count returns the number of tokens in the input string.
+func (c *Codec) Count(input string) (count int, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("error encoding: %v", r)
+		}
+	}()
+
+	for _, _ = range c.tokenize(input) {
+		count++
 	}
 
-	for match != nil {
-		piece := match.String()
-		if id, ok := c.vocabulary[piece]; ok {
-			ids = append(ids, id)
-			tokens = append(tokens, piece)
-		} else {
-			newIds, newTokens := c.bpe([]byte(piece))
-			ids = append(ids, newIds...)
-			tokens = append(tokens, newTokens...)
+	return count, err
+}
+
+// Encode returns the token IDs and tokens for the input string.
+func (c *Codec) Encode(input string) (ids []uint, tokens []string, err error) {
+
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("error encoding: %v", r)
 		}
-		m, err := c.splitRegexp.FindNextMatch(match)
-		if err != nil {
-			return nil, nil, fmt.Errorf("error matching: %v", err)
-		}
-		match = m
+	}()
+
+	for id, token := range c.tokenize(input) {
+		ids = append(ids, id)
+		tokens = append(tokens, token)
 	}
-	return ids, tokens, nil
+
+	return ids, tokens, err
+}
+
+func (c *Codec) tokenize(input string) iter.Seq2[uint, string] {
+	return func(yield func(uint, string) bool) {
+		match, err := c.splitRegexp.FindStringMatch(input)
+		if err != nil {
+			panic(fmt.Errorf("error matching: %v", err))
+		}
+		for match != nil {
+			piece := match.String()
+			if id, ok := c.vocabulary[piece]; ok {
+				if !yield(id, piece) {
+					break
+				}
+			} else {
+				parts := c.mergePairs([]byte(piece))
+
+				for i := 0; i < len(parts)-1; i++ {
+					token := string(piece[parts[i].offset:parts[i+1].offset])
+					if !yield(c.vocabulary[token], token) {
+						break
+					}
+				}
+			}
+			m, err := c.splitRegexp.FindNextMatch(match)
+			if err != nil {
+				break
+			}
+			match = m
+		}
+	}
 }
 
 func (c *Codec) Decode(tokens []uint) (string, error) {
@@ -67,12 +102,12 @@ func (c *Codec) Decode(tokens []uint) (string, error) {
 	return out, nil
 }
 
-func (c *Codec) bpe(piece []byte) ([]uint, []string) {
-	type part struct {
-		offset int
-		rank   uint
-	}
+type part struct {
+	offset int
+	rank   uint
+}
 
+func (c *Codec) mergePairs(piece []byte) []part {
 	parts := make([]part, len(piece)+1)
 	for i := 0; i < len(parts); i++ {
 		parts[i] = part{i, math.MaxUint}
@@ -120,12 +155,5 @@ func (c *Codec) bpe(piece []byte) ([]uint, []string) {
 		parts = append(parts[:minIndex+1], parts[minIndex+2:]...)
 	}
 
-	ids := make([]uint, len(parts)-1)
-	tokens := make([]string, len(parts)-1)
-	for i := 0; i < len(ids); i++ {
-		token := string(piece[parts[i].offset:parts[i+1].offset])
-		tokens[i] = token
-		ids[i] = c.vocabulary[token]
-	}
-	return ids, tokens
+	return parts
 }
