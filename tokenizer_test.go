@@ -1,9 +1,13 @@
 package tokenizer_test
 
 import (
+	"go/ast"
+	"go/token"
+	"strings"
 	"testing"
 
 	"github.com/tiktoken-go/tokenizer"
+	"golang.org/x/tools/go/packages"
 )
 
 type testCase struct {
@@ -119,4 +123,76 @@ func sliceEqual(a, b []uint) bool {
 		}
 	}
 	return true
+}
+
+// list all Models consts
+func listModels() ([]string, error) {
+	const loadMode = packages.NeedName |
+		packages.NeedFiles |
+		packages.NeedCompiledGoFiles |
+		packages.NeedImports |
+		packages.NeedDeps |
+		packages.NeedTypes |
+		packages.NeedSyntax |
+		packages.NeedTypesInfo
+
+	loadConfig := new(packages.Config)
+	loadConfig.Mode = loadMode
+	loadConfig.Fset = token.NewFileSet()
+	pkgs, err := packages.Load(loadConfig, "github.com/tiktoken-go/tokenizer")
+	if err != nil {
+		return nil, err
+	}
+	models := []string{}
+
+	for _, pkg := range pkgs {
+		for _, syn := range pkg.Syntax {
+			for _, dec := range syn.Decls {
+				if gen, ok := dec.(*ast.GenDecl); ok && gen.Tok == token.CONST {
+					for _, spec := range gen.Specs {
+						if val, ok := spec.(*ast.ValueSpec); ok {
+							if val.Type.(*ast.Ident).Name == "Model" {
+								modelName := val.Values[0].(*ast.BasicLit).Value
+								models = append(models, strings.Trim(modelName, "\""))
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return models, nil
+}
+
+func TestForModel(t *testing.T) {
+	models, err := listModels()
+	if err != nil {
+		t.Fatalf("listModels() returned error: %v", err)
+	}
+
+	for _, m := range models {
+		t.Run("For"+m, func(tt *testing.T) {
+
+			// Gpt2 is not supported
+			if m == "gpt2" {
+				_, err = tokenizer.ForModel(tokenizer.Model(m))
+				if err == nil {
+					tt.Error("Should throw model not supported error for gpt2")
+					return
+				}
+				return
+			}
+
+			tkz, err := tokenizer.ForModel(tokenizer.Model(m))
+			if err != nil {
+				tt.Errorf("Can't create tokenizer for model %s: %v", m, err)
+				return
+			}
+			if tkz == nil {
+				tt.Errorf("Tokenizer is nil for model %s", m)
+				return
+			}
+		})
+	}
 }

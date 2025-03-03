@@ -188,7 +188,7 @@ func Get(encoding Encoding) (Codec, error) {
 // is returned.
 func ForModel(model Model) (Codec, error) {
 	switch model {
-	case O1Preview, O1Mini, GPT4o:
+	case O1Preview, O1Mini, GPT4o, O3Mini:
 		return Get(O200kBase)
 
 	case GPT4, GPT35, GPT35Turbo, TextEmbeddingAda002:
