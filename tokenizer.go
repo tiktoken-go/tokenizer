@@ -97,6 +97,7 @@ type Model string
 const (
 	O1Preview                Model = "o1-preview"
 	O1Mini                   Model = "o1-mini"
+	O3Mini                   Model = "o3-mini"
 	GPT4o                    Model = "gpt-4o"
 	GPT4                     Model = "gpt-4"
 	GPT35Turbo               Model = "gpt-3.5-turbo"
@@ -144,8 +145,10 @@ const (
 	O200kBase  Encoding = "o200k_base"
 )
 
+// The golden source for that map is https://github.com/openai/tiktoken/blob/main/tiktoken/model.py
 var modelPrefixToEncoding map[Model]Encoding = map[Model]Encoding{
 	"o1-": O200kBase,
+	"o3-": O200kBase,
 	// chat
 	"chatgpt-4o-":    O200kBase,
 	"gpt-4o-":        O200kBase,
