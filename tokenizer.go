@@ -97,6 +97,7 @@ type Model string
 const (
 	O1Preview                Model = "o1-preview"
 	O1Mini                   Model = "o1-mini"
+	O3Mini                   Model = "o3-mini"
 	GPT4o                    Model = "gpt-4o"
 	GPT4                     Model = "gpt-4"
 	GPT35Turbo               Model = "gpt-3.5-turbo"
@@ -185,7 +186,7 @@ func Get(encoding Encoding) (Codec, error) {
 // is returned.
 func ForModel(model Model) (Codec, error) {
 	switch model {
-	case O1Preview, O1Mini, GPT4o:
+	case O1Preview, O1Mini, GPT4o, O3Mini:
 		return Get(O200kBase)
 
 	case GPT4, GPT35, GPT35Turbo, TextEmbeddingAda002:
