@@ -23,7 +23,7 @@ func (c *Codec) GetName() string {
 func (c *Codec) Count(input string) (int, error) {
 	var count int
 
-	err := c.tokenize(input, func(_ uint, _ string) {
+	err := c.tokenize(input, func(_ uint) {
 		count++
 	})
 
@@ -36,15 +36,15 @@ func (c *Codec) Encode(input string) ([]uint, []string, error) {
 	var ids []uint
 	var tokens []string
 
-	err := c.tokenize(input, func(id uint, token string) {
+	err := c.tokenize(input, func(id uint) {
 		ids = append(ids, id)
-		tokens = append(tokens, token)
+		tokens = append(tokens, c.reverseVocabulary[id])
 	})
 
 	return ids, tokens, err
 }
 
-func (c *Codec) tokenize(input string, yield func(uint, string)) error {
+func (c *Codec) tokenize(input string, yield func(uint)) error {
 	match, err := c.splitRegexp.FindStringMatch(input)
 	if err != nil {
 		return fmt.Errorf("error matching: %v", err)
@@ -52,13 +52,13 @@ func (c *Codec) tokenize(input string, yield func(uint, string)) error {
 	for match != nil {
 		piece := match.String()
 		if id, ok := c.vocabulary[piece]; ok {
-			yield(id, piece)
+			yield(id)
 		} else {
 			parts := c.mergePairs(piece)
 
 			for i := range len(parts) - 1 {
 				token := piece[parts[i].offset:parts[i+1].offset]
-				yield(c.vocabulary[token], token)
+				yield(c.vocabulary[token])
 			}
 		}
 		match, err = c.splitRegexp.FindNextMatch(match)
