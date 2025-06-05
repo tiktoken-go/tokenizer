@@ -13,8 +13,14 @@ package tokenizer
 //
 // Alternatively you can request a tokenizer using OpenAI's model name, the
 // following OpenAI models are supported:
+// - O4Mini
+// - O3
+// - O3Mini
+// - O1
 // - O1Preview
 // - O1Mini
+// - GPT4.1
+// - GPT4o
 // - GPT4
 // - GPT35Turbo
 // - TextEmbeddingAda002
@@ -95,9 +101,13 @@ type Codec interface {
 type Model string
 
 const (
+	O1                       Model = "o1"
 	O1Preview                Model = "o1-preview"
 	O1Mini                   Model = "o1-mini"
+	O3                       Model = "o3"
 	O3Mini                   Model = "o3-mini"
+	O4Mini                   Model = "o4-mini"
+	GPT41                    Model = "gpt-4.1"
 	GPT4o                    Model = "gpt-4o"
 	GPT4                     Model = "gpt-4"
 	GPT35Turbo               Model = "gpt-3.5-turbo"
@@ -147,8 +157,11 @@ const (
 
 var modelPrefixToEncoding map[Model]Encoding = map[Model]Encoding{
 	"o1-": O200kBase,
+	"o3-": O200kBase,
+	"o4-": O200kBase,
 	// chat
 	"chatgpt-4o-":    O200kBase,
+	"gpt-4.1-":       O200kBase,
 	"gpt-4o-":        O200kBase,
 	"gpt-4-":         Cl100kBase,
 	"gpt-3.5-turbo-": Cl100kBase,
@@ -186,7 +199,7 @@ func Get(encoding Encoding) (Codec, error) {
 // is returned.
 func ForModel(model Model) (Codec, error) {
 	switch model {
-	case O1Preview, O1Mini, GPT4o, O3Mini:
+	case O1, O1Preview, O1Mini, GPT41, GPT4o, O3, O3Mini, O4Mini:
 		return Get(O200kBase)
 
 	case GPT4, GPT35, GPT35Turbo, TextEmbeddingAda002:
