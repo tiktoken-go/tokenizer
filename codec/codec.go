@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/dlclark/regexp2"
+	"github.com/dlclark/regexp2/v2"
 )
 
 type Codec struct {

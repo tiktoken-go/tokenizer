@@ -1,6 +1,6 @@
-github.com/dlclark/regexp2 v1.11.5 h1:Q/sSnsKerHeCkc/jSTNq1oCm7KiVgUMZRDUoRu0JQZQ=
-github.com/dlclark/regexp2 v1.11.5/go.mod h1:DHkYz0B9wPfa6wondMfaivmHpzrQ3v9q8cnmRbL6yW8=
-github.com/dlclark/regexp2cg v0.2.0 h1:YTk+oP9dO74myroxiopnf/zlGOSuTGIuYhRx769YFk4=
-github.com/dlclark/regexp2cg v0.2.0/go.mod h1:K2c4ctxtSQjzgeMKKgi1rEflZVVJWZWlUUdmtjOp/y8=
+github.com/dlclark/regexp2/v2 v2.1.0 h1:jHXRmHRZGbuQzDZjMlCAXOvQb75iv3HyLDzXGj5H1AY=
+github.com/dlclark/regexp2/v2 v2.1.0/go.mod h1:Bz5TMy5d8fPK0ximH0Yi9KvsRHNnvXqUx9XG6a4wB+I=
+github.com/dlclark/regexp2cg v0.7.2 h1:6UA/sRxbUIYsTVIuR6ZTsmkplgff5W2YZBLMRQiMsZU=
+github.com/dlclark/regexp2cg v0.7.2/go.mod h1:Gtyx3xhJ8ZXoXJVZ0Cxm0qcnyjZvwUltpXOuz7WkLFw=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=

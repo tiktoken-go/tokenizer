@@ -1,6 +1,6 @@
 package codec
 
-import "github.com/dlclark/regexp2"
+import "github.com/dlclark/regexp2/v2"
 
 func NewR50kBase() *Codec {
 	r50kBaseVocabOnce.Do(r50kBaseVocabInit)

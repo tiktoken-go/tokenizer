@@ -1,6 +1,6 @@
 package codec
 
-import "github.com/dlclark/regexp2"
+import "github.com/dlclark/regexp2/v2"
 
 func NewO200kBase() *Codec {
 	o200kBaseVocabOnce.Do(o200kBaseVocabInit)
