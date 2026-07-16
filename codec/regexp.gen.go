@@ -16,7 +16,7 @@ Capture(index = 0, unindex = -1)
     One(Ch = ')
     Atomic
      Alternate
-      Set(Set = [R-Tr-tſ])
+      Set(Set = [STstſ])
       Concatenate
        Set(Set = [Rr])
        Set(Set = [Ee])
@@ -102,9 +102,9 @@ func splitRegexp_Execute(r *regexp2.Runner) error {
 	alternation_starting_pos1 = pos
 
 	// Branch 0
-	// Node: Set(Set = [R-Tr-tſ])
-	// Match [R-Tr-tſ].
-	if len(slice) < 2 || ((slice[1] >= 128 || !helpers.IsInASCIIBitmap(slice[1], 0x0, 0x1c0000001c0000)) && (slice[1] < 128 || !set_4a1357005dba18ced5af0bde8202a98fab7a3500c675e3cb1c60597d7a36436a.CharIn(slice[1]))) {
+	// Node: Set(Set = [STstſ])
+	// Match [STstſ].
+	if len(slice) < 2 || ((slice[1] >= 128 || !helpers.IsInASCIIBitmap(slice[1], 0x0, 0x18000000180000)) && (slice[1] < 128 || !set_4a1357005dba18ced5af0bde8202a98fab7a3500c675e3cb1c60597d7a36436a.CharIn(slice[1]))) {
 		goto AlternationBranch1
 	}
 

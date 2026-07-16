@@ -40,6 +40,7 @@ func TestCl100kBase(t *testing.T) {
 		{text: "hello   world", ids: []uint{15339, 256, 1917}},
 		{text: "supercalifragilistic", ids: []uint{13066, 3035, 278, 333, 4193, 321, 4633}},
 		{text: "We know what we are, but know not what we may be.", ids: []uint{1687, 1440, 1148, 584, 527, 11, 719, 1440, 539, 1148, 584, 1253, 387, 13}},
+		{text: "'RE", ids: []uint{95253}},
 	}
 
 	runTests(t, tok, tests)
