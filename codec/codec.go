@@ -3,6 +3,7 @@ package codec
 import (
 	"fmt"
 	"math"
+	"strings"
 
 	"github.com/dlclark/regexp2/v2"
 )
@@ -86,7 +87,7 @@ func (c *Codec) Decode(tokens []uint) (string, error) {
 		}
 		out += piece
 	}
-	return out, nil
+	return strings.ToValidUTF8(out, "\uFFFD"), nil
 }
 
 type part struct {

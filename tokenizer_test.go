@@ -29,6 +29,40 @@ func TestO200kBase(t *testing.T) {
 	runTests(t, tok, tests)
 }
 
+func TestO200kBaseDecodeInvalidUTF8(t *testing.T) {
+	tok, err := tokenizer.Get(tokenizer.O200kBase)
+	if err != nil {
+		t.Fatalf("can't create tokenizer: %v", err)
+	}
+
+	// 35895 is a truncated 3-byte UTF-8 sequence, which byte-level BPE allows but
+	// which is not valid on its own. Decoding must collapse it into a single U+FFFD,
+	// matching tiktoken's errors="replace", so the text survives an encode/decode cycle.
+	text, err := tok.Decode([]uint{35895})
+	if err != nil {
+		t.Fatalf("error decoding: %v", err)
+	}
+	if want := "\uFFFD"; text != want {
+		t.Errorf("decoding mismatch - want: %q got: %q", want, text)
+	}
+
+	ids, _, err := tok.Encode(text)
+	if err != nil {
+		t.Fatalf("error encoding: %v", err)
+	}
+	if want := []uint{3251}; !sliceEqual(ids, want) {
+		t.Errorf("encoding mismatch - want: %v got: %v", want, ids)
+	}
+
+	same, err := tok.Decode(ids)
+	if err != nil {
+		t.Fatalf("error decoding: %v", err)
+	}
+	if same != text {
+		t.Errorf("decode/encode cycle changed the text - want: %q got: %q", text, same)
+	}
+}
+
 func TestCl100kBase(t *testing.T) {
 	tok, err := tokenizer.Get(tokenizer.Cl100kBase)
 	if err != nil {
