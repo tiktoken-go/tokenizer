@@ -95,9 +95,16 @@ var (
 )
 
 type Codec interface {
+	// GetName returns the codec's name (i.e. p50k_base, ...)
 	GetName() string
+
+	// Count returns the number of tokens in the input string.
 	Count(string) (int, error)
+
+	// Encode returns the token IDs and tokens for the input string.
 	Encode(string) ([]uint, []string, error)
+
+	// Decode returns the text represented by the token IDs.
 	Decode([]uint) (string, error)
 }
 

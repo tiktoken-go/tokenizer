@@ -1,6 +1,7 @@
 package tokenizer_test
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/tiktoken-go/tokenizer"
@@ -79,6 +80,40 @@ func TestP50kBase(t *testing.T) {
 	}
 
 	runTests(t, tok, tests)
+}
+
+func TestDecodeConcurrent(t *testing.T) {
+	tok, err := tokenizer.Get(tokenizer.Cl100kBase)
+	if err != nil {
+		t.Fatalf("Can't create tokenizer: %v", err)
+	}
+
+	ids, _, err := tok.Encode("hello world")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	const goroutines = 16
+	var (
+		start sync.WaitGroup
+		done  sync.WaitGroup
+	)
+	start.Add(1)
+	for range goroutines {
+		done.Go(func() {
+			start.Wait()
+			got, err := tok.Decode(ids)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			if got != "hello world" {
+				t.Errorf("Decode = %q, want %q", got, "hello world")
+			}
+		})
+	}
+	start.Done()
+	done.Wait()
 }
 
 func runTests(t *testing.T, tok tokenizer.Codec, tests []testCase) {
