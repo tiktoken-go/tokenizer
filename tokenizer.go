@@ -92,6 +92,38 @@ import (
 var (
 	ErrModelNotSupported    = errors.New("model not supported")
 	ErrEncodingNotSupported = errors.New("encoding not supported")
+
+	// ErrInvalidUTF8 is returned in ErrorModeStrict when the input to Encode
+	// or Count, or the output of Decode, is not valid UTF-8. The error wraps
+	// it with the byte offset of the first invalid sequence; use errors.Is.
+	ErrInvalidUTF8 = codec.ErrInvalidUTF8
+)
+
+// ErrorMode controls how a codec handles invalid UTF-8: in the bytes produced
+// by Decode, and in the input string passed to Encode and Count. Byte-level
+// BPE tokens can hold part of a multi-byte character, so decoding a slice of
+// token IDs can produce invalid UTF-8. The modes mirror the errors argument of
+// Python's bytes.decode used by tiktoken. Encode applies the same mode to its
+// input before tokenizing, so Encode(s) gives the same IDs as encoding the
+// string Decode would produce for s's bytes.
+type ErrorMode = codec.ErrorMode
+
+const (
+	// ErrorModeNone leaves invalid UTF-8 as is: Decode returns the decoded
+	// bytes unchanged, so the result may not be valid UTF-8, and Encode
+	// tokenizes its input without cleaning it first. This is the default.
+	ErrorModeNone = codec.ErrorModeNone
+
+	// ErrorModeReplace replaces each maximal invalid subsequence with a single
+	// U+FFFD, matching errors="replace" (tiktoken's default).
+	ErrorModeReplace = codec.ErrorModeReplace
+
+	// ErrorModeIgnore drops invalid bytes, matching errors="ignore".
+	ErrorModeIgnore = codec.ErrorModeIgnore
+
+	// ErrorModeStrict makes Decode, Encode and Count return an error reporting
+	// the byte offset of the first invalid sequence, matching errors="strict".
+	ErrorModeStrict = codec.ErrorModeStrict
 )
 
 type Codec interface {
@@ -106,6 +138,13 @@ type Codec interface {
 
 	// Decode returns the text represented by the token IDs.
 	Decode([]uint) (string, error)
+
+	// ErrorMode returns the codec's current error mode.
+	ErrorMode() ErrorMode
+
+	// SetErrorMode sets the codec's behavior when invalid UTF-8 is passed to
+	// either Encode or Decode methods
+	SetErrorMode(ErrorMode)
 }
 
 type Model string

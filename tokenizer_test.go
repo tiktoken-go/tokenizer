@@ -1,6 +1,8 @@
 package tokenizer_test
 
 import (
+	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -135,6 +137,173 @@ func TestDecodeConcurrent(t *testing.T) {
 	}
 	start.Done()
 	done.Wait()
+}
+
+func TestErrorModeDefault(t *testing.T) {
+	tok, err := tokenizer.Get(tokenizer.O200kBase)
+	if err != nil {
+		t.Fatalf("can't create tokenizer: %v", err)
+	}
+
+	if got := tok.ErrorMode(); got != tokenizer.ErrorModeNone {
+		t.Errorf("default error mode - want: %v got: %v", tokenizer.ErrorModeNone, got)
+	}
+
+	tok.SetErrorMode(tokenizer.ErrorModeStrict)
+	if got := tok.ErrorMode(); got != tokenizer.ErrorModeStrict {
+		t.Errorf("error mode after set - want: %v got: %v", tokenizer.ErrorModeStrict, got)
+	}
+}
+
+func TestDecodeErrorMode(t *testing.T) {
+	tok, err := tokenizer.Get(tokenizer.O200kBase)
+	if err != nil {
+		t.Fatalf("can't create tokenizer: %v", err)
+	}
+
+	tests := []struct {
+		name    string
+		ids     []uint
+		none    string
+		replace string
+		ignore  string
+		invalid bool
+		offset  int // byte offset of the first invalid sequence, for strict
+	}{
+		{name: "valid", ids: []uint{24912, 2375}, none: "hello world", replace: "hello world", ignore: "hello world"},
+		{name: "truncated", ids: []uint{35895}, none: "\xe8\x96", replace: "�", ignore: "", invalid: true, offset: 0},
+		{name: "truncated twice", ids: []uint{35895, 35895}, none: "\xe8\x96\xe8\x96", replace: "��", ignore: "", invalid: true, offset: 0},
+		{name: "truncated in text", ids: []uint{64, 35895, 65}, none: "a\xe8\x96b", replace: "a�b", ignore: "ab", invalid: true, offset: 1},
+		{name: "invalid bytes", ids: []uint{187, 186}, none: "\xff\xfe", replace: "��", ignore: "", invalid: true, offset: 0},
+		{name: "surrogate", ids: []uint{64, 169, 254, 222, 65}, none: "a\xed\xa0\x80b", replace: "a���b", ignore: "ab", invalid: true, offset: 1},
+		{name: "truncated before valid", ids: []uint{35895, 377}, none: "\xe8\x96é", replace: "�é", ignore: "é", invalid: true, offset: 0},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			for _, mode := range []struct {
+				mode tokenizer.ErrorMode
+				name string
+				want string
+			}{
+				{tokenizer.ErrorModeNone, "none", test.none},
+				{tokenizer.ErrorModeReplace, "replace", test.replace},
+				{tokenizer.ErrorModeIgnore, "ignore", test.ignore},
+			} {
+				tok.SetErrorMode(mode.mode)
+				got, err := tok.Decode(test.ids)
+				if err != nil {
+					t.Errorf("%s: error decoding: %v", mode.name, err)
+					continue
+				}
+				if got != mode.want {
+					t.Errorf("%s: decoding mismatch - want: %q got: %q", mode.name, mode.want, got)
+				}
+			}
+
+			tok.SetErrorMode(tokenizer.ErrorModeStrict)
+			got, err := tok.Decode(test.ids)
+			switch {
+			case test.invalid:
+				checkInvalidUTF8(t, "strict decode", err, test.offset)
+			case err != nil:
+				t.Errorf("strict: error decoding: %v", err)
+			case got != test.none:
+				t.Errorf("strict: decoding mismatch - want: %q got: %q", test.none, got)
+			}
+		})
+	}
+}
+
+func TestEncodeErrorMode(t *testing.T) {
+	tok, err := tokenizer.Get(tokenizer.O200kBase)
+	if err != nil {
+		t.Fatalf("can't create tokenizer: %v", err)
+	}
+	ref, err := tokenizer.Get(tokenizer.O200kBase)
+	if err != nil {
+		t.Fatalf("can't create tokenizer: %v", err)
+	}
+
+	tests := []struct {
+		name    string
+		ids     []uint
+		none    string
+		replace string
+		ignore  string
+		invalid bool
+		offset  int // byte offset of the first invalid sequence, for strict
+	}{
+		{name: "valid", ids: []uint{24912, 2375}, none: "hello world", replace: "hello world", ignore: "hello world"},
+		{name: "truncated", ids: []uint{35895}, none: "\xe8\x96", replace: "�", ignore: "", invalid: true, offset: 0},
+		{name: "truncated twice", ids: []uint{35895, 35895}, none: "\xe8\x96\xe8\x96", replace: "��", ignore: "", invalid: true, offset: 0},
+		{name: "truncated in text", ids: []uint{64, 35895, 65}, none: "a\xe8\x96b", replace: "a�b", ignore: "ab", invalid: true, offset: 1},
+		{name: "invalid bytes", ids: []uint{187, 186}, none: "\xff\xfe", replace: "��", ignore: "", invalid: true, offset: 0},
+		{name: "surrogate", ids: []uint{64, 169, 254, 222, 65}, none: "a\xed\xa0\x80b", replace: "a���b", ignore: "ab", invalid: true, offset: 1},
+		{name: "truncated before valid", ids: []uint{35895, 377}, none: "\xe8\x96é", replace: "�é", ignore: "é", invalid: true, offset: 0},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			for _, mode := range []struct {
+				mode tokenizer.ErrorMode
+				name string
+				want string
+			}{
+				{tokenizer.ErrorModeReplace, "replace", test.replace},
+				{tokenizer.ErrorModeIgnore, "ignore", test.ignore},
+			} {
+				want, _, err := ref.Encode(mode.want)
+				if err != nil {
+					t.Fatalf("%s: error encoding reference: %v", mode.name, err)
+				}
+
+				tok.SetErrorMode(mode.mode)
+				ids, _, err := tok.Encode(test.none)
+				if err != nil {
+					t.Errorf("%s: error encoding: %v", mode.name, err)
+					continue
+				}
+				if !sliceEqual(ids, want) {
+					t.Errorf("%s: encoding mismatch - want: %v got: %v", mode.name, want, ids)
+				}
+
+				count, err := tok.Count(test.none)
+				if err != nil {
+					t.Errorf("%s: error counting: %v", mode.name, err)
+					continue
+				}
+				if count != len(want) {
+					t.Errorf("%s: count mismatch - want: %d got: %d", mode.name, len(want), count)
+				}
+			}
+
+			tok.SetErrorMode(tokenizer.ErrorModeStrict)
+			_, _, err := tok.Encode(test.none)
+			if test.invalid {
+				checkInvalidUTF8(t, "strict encode", err, test.offset)
+			} else if err != nil {
+				t.Errorf("strict: error encoding: %v", err)
+			}
+			_, err = tok.Count(test.none)
+			if test.invalid {
+				checkInvalidUTF8(t, "strict count", err, test.offset)
+			} else if err != nil {
+				t.Errorf("strict: error counting: %v", err)
+			}
+		})
+	}
+}
+
+func checkInvalidUTF8(t *testing.T, name string, err error, offset int) {
+	t.Helper()
+	if !errors.Is(err, tokenizer.ErrInvalidUTF8) {
+		t.Errorf("%s: want ErrInvalidUTF8, got: %v", name, err)
+		return
+	}
+	if want := fmt.Sprintf("at byte %d", offset); !strings.HasSuffix(err.Error(), want) {
+		t.Errorf("%s: want error ending in %q, got: %v", name, want, err)
+	}
 }
 
 func runTests(t *testing.T, tok tokenizer.Codec, tests []testCase) {
