@@ -1,8 +1,11 @@
 package tokenizer_test
 
 import (
+	"strconv"
+	"strings"
 	"sync"
 	"testing"
+	"unicode"
 
 	"github.com/tiktoken-go/tokenizer"
 )
@@ -77,6 +80,24 @@ func TestP50kBase(t *testing.T) {
 		{text: "hello   world", ids: []uint{31373, 50257, 995}},
 		{text: "supercalifragilistic", ids: []uint{16668, 9948, 361, 22562, 346, 2569}},
 		{text: "We know what we are, but know not what we may be.", ids: []uint{1135, 760, 644, 356, 389, 11, 475, 760, 407, 644, 356, 743, 307, 13}},
+	}
+
+	runTests(t, tok, tests)
+}
+
+func TestO200kBaseUnicodeMismatch(t *testing.T) {
+	major, _, _ := strings.Cut(unicode.Version, ".")
+	if v, err := strconv.Atoi(major); err != nil || v < 16 {
+		t.Skipf("requires Unicode 16+, have %s", unicode.Version)
+	}
+
+	tok, err := tokenizer.Get(tokenizer.O200kBase)
+	if err != nil {
+		t.Fatalf("can't create tokenizer: %v", err)
+	}
+
+	tests := []testCase{
+		{text: "\u1C89\\u", ids: []uint{157, 110, 231, 7570}},
 	}
 
 	runTests(t, tok, tests)
