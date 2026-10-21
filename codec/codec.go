@@ -67,20 +67,28 @@ func (c *Codec) Encode(input string) ([]uint, []string, error) {
 // Decode returns the string for the input token IDs
 func (c *Codec) Decode(tokens []uint) (string, error) {
 	c.reverseVocabularyOnce.Do(func() {
-		c.reverseVocabulary = make(map[uint]string)
+		var maxID uint
+		for _, v := range c.vocabulary {
+			maxID = max(maxID, v)
+		}
+		c.reverseVocabulary = make(reverse, maxID+1)
 		for k, v := range c.vocabulary {
 			c.reverseVocabulary[v] = k
 		}
 	})
 
-	var out string
+	var sb strings.Builder
 	for _, t := range tokens {
-		piece, ok := c.reverseVocabulary[t]
-		if !ok {
+		var piece string
+		if t < uint(len(c.reverseVocabulary)) {
+			piece = c.reverseVocabulary[t]
+		}
+		if piece == "" {
 			return "", fmt.Errorf("invalid token: %d", t)
 		}
-		out += piece
+		sb.WriteString(piece)
 	}
+	out := sb.String()
 
 	switch c.errorMode {
 	case ErrorModeReplace:

@@ -306,6 +306,27 @@ func checkInvalidUTF8(t *testing.T, name string, err error, offset int) {
 	}
 }
 
+func TestDecodeInvalidToken(t *testing.T) {
+	tests := []struct {
+		encoding tokenizer.Encoding
+		id       uint
+	}{
+		{encoding: tokenizer.O200kBase, id: 199998},   // first ID past the vocabulary
+		{encoding: tokenizer.O200kBase, id: ^uint(0)}, // max uint
+		{encoding: tokenizer.P50kBase, id: 50256},     // gap: <|endoftext|> is a special token
+	}
+
+	for _, test := range tests {
+		tok, err := tokenizer.Get(test.encoding)
+		if err != nil {
+			t.Fatalf("can't create tokenizer: %v", err)
+		}
+		if got, err := tok.Decode([]uint{64, test.id}); err == nil {
+			t.Errorf("%s: expected error decoding %d, got: %q", test.encoding, test.id, got)
+		}
+	}
+}
+
 func runTests(t *testing.T, tok tokenizer.Codec, tests []testCase) {
 	for _, test := range tests {
 		t.Run(test.text, func(t *testing.T) {
