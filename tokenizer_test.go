@@ -3,6 +3,7 @@ package tokenizer_test
 import (
 	"errors"
 	"fmt"
+	"math/rand/v2"
 	"strconv"
 	"strings"
 	"sync"
@@ -323,6 +324,57 @@ func TestDecodeInvalidToken(t *testing.T) {
 		}
 		if got, err := tok.Decode([]uint{64, test.id}); err == nil {
 			t.Errorf("%s: expected error decoding %d, got: %q", test.encoding, test.id, got)
+		}
+	}
+}
+
+func longPiece(alphabet string, n int) string {
+	rng := rand.New(rand.NewPCG(1, 2))
+	runes := []rune(alphabet)
+
+	var b strings.Builder
+	for {
+		r := runes[rng.IntN(len(runes))]
+		if b.Len()+len(string(r)) > n {
+			return b.String()
+		}
+		b.WriteRune(r)
+	}
+}
+
+// BenchmarkLongPiece measures Count on a single piece of increasing length for
+// each alphabet, which shows how merging scales with piece length.
+func BenchmarkLongPiece(b *testing.B) {
+	var longPieceAlphabets = []struct {
+		name     string
+		encoding tokenizer.Encoding
+		runes    string
+	}{
+		{"chinese", tokenizer.O200kBase, "网关在转发请求之前需要估算输入的令牌数量以便检查余额和选择超时档位"},
+		{"latin", tokenizer.O200kBase, "abcdefghijklmnopqrstuvwxyz"},
+		{"spaces", tokenizer.O200kBase, " "},
+		{"digits", tokenizer.P50kBase, "0123456789"},
+		{"symbols", tokenizer.O200kBase, "=-*#/\\|_.:;"},
+	}
+
+	for _, alphabet := range longPieceAlphabets {
+		tok, err := tokenizer.Get(alphabet.encoding)
+		if err != nil {
+			b.Fatalf("can't create tokenizer: %v", err)
+		}
+
+		for _, n := range []int{16, 64, 256, 1024, 4096} {
+			piece := longPiece(alphabet.runes, n)
+
+			b.Run(fmt.Sprintf("%s/%d", alphabet.name, len(piece)), func(b *testing.B) {
+				b.SetBytes(int64(len(piece)))
+				for b.Loop() {
+					if _, err := tok.Count(piece); err != nil {
+						b.Fatal(err)
+					}
+				}
+				b.ReportAllocs()
+			})
 		}
 	}
 }
