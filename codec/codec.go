@@ -136,12 +136,7 @@ func (c *Codec) tokenize(input string, yield func(uint, string)) error {
 		if id, ok := c.vocabulary[piece]; ok {
 			yield(id, piece)
 		} else {
-			parts := c.mergePairs(piece)
-
-			for i := range len(parts) - 1 {
-				token := piece[parts[i].offset:parts[i+1].offset]
-				yield(c.vocabulary[token], token)
-			}
+			c.mergePairs(piece, yield)
 		}
 		match, err = c.splitRegexp.FindNextMatch(match)
 		if err != nil {
@@ -224,12 +219,18 @@ type part struct {
 // switches from mergePairsScan to mergePairsHeap.
 const mergeHeapThreshold = 96
 
-// mergePairs splits piece into the parts byte-pair encoding merges it into.
-func (c *Codec) mergePairs(piece string) []part {
-	if len(piece) < mergeHeapThreshold {
-		return c.mergePairsScan(piece)
+// mergePairs yields the tokens byte-pair encoding merges piece into.
+func (c *Codec) mergePairs(piece string, yield func(uint, string)) {
+	if len(piece) >= mergeHeapThreshold {
+		c.mergePairsHeap(piece, yield)
+		return
 	}
-	return c.mergePairsHeap(piece)
+
+	parts := c.mergePairsScan(piece)
+	for i := range len(parts) - 1 {
+		token := piece[parts[i].offset:parts[i+1].offset]
+		yield(c.vocabulary[token], token)
+	}
 }
 
 // mergePairsScan repeatedly merges the leftmost pair of parts with the lowest
@@ -285,23 +286,35 @@ func (c *Codec) mergePairsScan(piece string) []part {
 	return parts
 }
 
-// noRank marks a boundary that can't merge with its successor, or that was
-// removed by a merge.
+// noRank marks a boundary that can't merge with its successor.
 const noRank = math.MaxUint32
 
-// mergeNode is a part boundary in mergePairsHeap's doubly linked list. rank is
-// the rank of the token formed by merging this part with the next one.
+// noSlot marks a boundary that has no candidate in the heap.
+const noSlot = -1
+
+// mergeNode is a part boundary in mergePairsHeap's doubly linked list. slot is
+// where the heap keeps the candidate that merges this part with the next one.
+//
+// candidate belongs to the heap, not to the boundary: nodes[k].candidate is the
+// heap's k-th entry. There is never more than one candidate per boundary, so
+// the heap fits in the nodes and the two share a single allocation.
 type mergeNode struct {
 	prev, next int32
-	rank       uint32
+	slot       int32
+	candidate  mergeCandidate
 }
 
-// mergePairsHeap returns the same parts as mergePairsScan in O(n log n).
-func (c *Codec) mergePairsHeap(piece string) []part {
+type mergeCandidate struct {
+	rank   uint32
+	offset int32
+}
+
+// mergePairsHeap yields the same tokens as mergePairsScan in O(n log n).
+func (c *Codec) mergePairsHeap(piece string, yield func(uint, string)) {
 	n := int32(len(piece))
 	nodes := make([]mergeNode, n+1)
 	for i := range nodes {
-		nodes[i] = mergeNode{prev: int32(i) - 1, next: int32(i) + 1, rank: noRank}
+		nodes[i] = mergeNode{prev: int32(i) - 1, next: int32(i) + 1, slot: noSlot}
 	}
 	nodes[n].next = -1
 
@@ -320,114 +333,122 @@ func (c *Codec) mergePairsHeap(piece string) []part {
 		return noRank
 	}
 
-	candidates := make(mergeHeap, 0, n)
+	candidates := mergeHeap{nodes: nodes}
 	for i := int32(0); i+2 <= n; i++ {
 		if rank := rankOf(i); rank != noRank {
-			nodes[i].rank = rank
-			candidates = append(candidates, mergeCandidate{rank, i})
+			candidates.place(candidates.size, mergeCandidate{rank, i})
+			candidates.size++
 		}
 	}
 	candidates.init()
 
-	for len(candidates) > 0 {
-		top := candidates.pop()
-		i := top.offset
-		if nodes[i].rank != top.rank {
-			continue
-		}
-
+	for candidates.size > 0 {
+		i := nodes[0].candidate.offset
 		j := nodes[i].next
 		k := nodes[j].next
-		nodes[j].rank = noRank
+		candidates.set(j, noRank)
 		nodes[i].next = k
 		if k >= 0 {
 			nodes[k].prev = i
 		}
 
 		for _, b := range [2]int32{i, nodes[i].prev} {
-			if b < 0 {
-				continue
-			}
-			nodes[b].rank = rankOf(b)
-			if nodes[b].rank != noRank {
-				candidates.push(mergeCandidate{nodes[b].rank, b})
+			if b >= 0 {
+				candidates.set(b, rankOf(b))
 			}
 		}
 	}
 
-	parts := make([]part, 0, n+1)
-	for i := int32(0); i >= 0; i = nodes[i].next {
-		rank := uint(math.MaxUint)
-		if nodes[i].rank != noRank {
-			rank = uint(nodes[i].rank)
-		}
-		parts = append(parts, part{int(i), rank})
+	for i := int32(0); nodes[i].next >= 0; i = nodes[i].next {
+		token := piece[i:nodes[i].next]
+		yield(c.vocabulary[token], token)
 	}
-	return parts
-}
-
-type mergeCandidate struct {
-	rank   uint32
-	offset int32
 }
 
 // mergeHeap is a binary min-heap of merge candidates ordered by rank, then by
-// offset, so that among equal ranks the leftmost pair merges first. It is
-// typed, unlike container/heap, so pushes don't allocate.
-type mergeHeap []mergeCandidate
+// offset, so that among equal ranks the leftmost pair merges first. It stores
+// its entries in nodes[:size] and keeps every boundary's slot up to date, so a
+// candidate that a merge invalidates is removed instead of left behind: the
+// heap never grows beyond the candidates that can still merge.
+type mergeHeap struct {
+	nodes []mergeNode
+	size  int32
+}
 
-func (h mergeHeap) less(a, b int) bool {
-	if h[a].rank != h[b].rank {
-		return h[a].rank < h[b].rank
+func (a mergeCandidate) less(b mergeCandidate) bool {
+	if a.rank != b.rank {
+		return a.rank < b.rank
 	}
-	return h[a].offset < h[b].offset
+	return a.offset < b.offset
 }
 
-func (h mergeHeap) init() {
-	for i := len(h)/2 - 1; i >= 0; i-- {
-		h.down(i)
+// place stores c as the heap's k-th entry.
+func (h *mergeHeap) place(k int32, c mergeCandidate) {
+	h.nodes[k].candidate = c
+	h.nodes[c.offset].slot = k
+}
+
+func (h *mergeHeap) init() {
+	for k := h.size/2 - 1; k >= 0; k-- {
+		h.down(k, h.nodes[k].candidate)
 	}
 }
 
-func (h *mergeHeap) push(c mergeCandidate) {
-	*h = append(*h, c)
-	h.up(len(*h) - 1)
-}
+// set makes rank the rank of the candidate of the boundary at offset: it adds
+// the candidate, moves it to where its new rank belongs or, for noRank, takes
+// it out of the heap.
+func (h *mergeHeap) set(offset int32, rank uint32) {
+	k := h.nodes[offset].slot
+	c := mergeCandidate{rank, offset}
 
-func (h *mergeHeap) pop() mergeCandidate {
-	old := *h
-	top := old[0]
-	last := len(old) - 1
-	old[0] = old[last]
-	*h = old[:last]
-	h.down(0)
-	return top
-}
-
-func (h mergeHeap) up(i int) {
-	for i > 0 {
-		parent := (i - 1) / 2
-		if !h.less(i, parent) {
+	switch {
+	case rank != noRank && k == noSlot:
+		h.size++
+		h.up(h.size-1, c)
+		return
+	case rank == noRank && k == noSlot:
+		return
+	case rank == noRank:
+		h.nodes[offset].slot = noSlot
+		h.size--
+		if k == h.size {
 			return
 		}
-		h[i], h[parent] = h[parent], h[i]
-		i = parent
+		c = h.nodes[h.size].candidate // the last entry takes the place of the one removed
+	}
+
+	if k > 0 && c.less(h.nodes[(k-1)/2].candidate) {
+		h.up(k, c)
+	} else {
+		h.down(k, c)
 	}
 }
 
-func (h mergeHeap) down(i int) {
-	for {
-		child := 2*i + 1
-		if child >= len(h) {
-			return
+// up places c at k or above, moving the entries it passes one level down.
+func (h *mergeHeap) up(k int32, c mergeCandidate) {
+	for k > 0 {
+		parent := (k - 1) / 2
+		if !c.less(h.nodes[parent].candidate) {
+			break
 		}
-		if right := child + 1; right < len(h) && h.less(right, child) {
+		h.place(k, h.nodes[parent].candidate)
+		k = parent
+	}
+	h.place(k, c)
+}
+
+// down places c at k or below, moving the entries it passes one level up.
+func (h *mergeHeap) down(k int32, c mergeCandidate) {
+	for k < h.size/2 {
+		child := 2*k + 1
+		if right := child + 1; right < h.size && h.nodes[right].candidate.less(h.nodes[child].candidate) {
 			child = right
 		}
-		if !h.less(child, i) {
-			return
+		if !h.nodes[child].candidate.less(c) {
+			break
 		}
-		h[i], h[child] = h[child], h[i]
-		i = child
+		h.place(k, h.nodes[child].candidate)
+		k = child
 	}
+	h.place(k, c)
 }
